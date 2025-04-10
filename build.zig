@@ -8,25 +8,22 @@ pub fn build(b: *std.Build) !void {
         .name = "z",
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
-    lib.linkLibC();
-    lib.addIncludePath(.{ .path = "upstream" });
-    lib.installHeadersDirectoryOptions(.{
-        .source_dir = .{ .path = "upstream" },
-        .install_dir = .header,
-        .install_subdir = "",
-        .exclude_extensions = &.{ ".c", ".in", ".txt" },
-    });
+    lib.addIncludePath(b.path("upstream"));
+    lib.installHeadersDirectory(b.path("upstream"), "zlib", .{});
 
-    var flags = std.ArrayList([]const u8).init(b.allocator);
-    defer flags.deinit();
+    var flags = try std.BoundedArray([]const u8, 64).init(0);
     try flags.appendSlice(&.{
         "-DHAVE_SYS_TYPES_H",
         "-DHAVE_STDINT_H",
         "-DHAVE_STDDEF_H",
         "-DZ_HAVE_UNISTD_H",
     });
-    lib.addCSourceFiles(srcs, flags.items);
+    lib.addCSourceFiles(.{
+        .files = srcs,
+        .flags = flags.slice(),
+    });
 
     b.installArtifact(lib);
 }
